@@ -148,11 +148,13 @@ py run_thesis_visualization.py
 
 1. [README.md](E:\QJY\README.md)
    先理解项目是什么、流程怎么走、目录怎么看。
-2. [DELIVERY_GUIDE.md](E:\QJY\DELIVERY_GUIDE.md)
+2. [BEGINNER_GUIDE.md](E:\QJY\BEGINNER_GUIDE.md)
+   面向初学者解释什么是用户流失预警、这些数据和图表分别代表什么、应该怎么理解这些实验结果。
+3. [DELIVERY_GUIDE.md](E:\QJY\DELIVERY_GUIDE.md)
    查看交付包里每一类文件分别是什么、该先看哪几个。
-3. [THESIS_INTEGRATION_GUIDE.md](E:\QJY\THESIS_INTEGRATION_GUIDE.md)
+4. [THESIS_INTEGRATION_GUIDE.md](E:\QJY\THESIS_INTEGRATION_GUIDE.md)
    查看当前实验结果如何嵌入论文初稿，哪些旧描述必须改，哪些图表适合放正文、哪些适合放附录。
-4. [RESULTS_INTERPRETATION.md](E:\QJY\RESULTS_INTERPRETATION.md)
+5. [RESULTS_INTERPRETATION.md](E:\QJY\RESULTS_INTERPRETATION.md)
    查看每张关键图表在论文中该放哪里、代表什么含义、可以怎么解释。
 
 ## 8. 当前结论摘要
