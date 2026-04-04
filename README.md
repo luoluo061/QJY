@@ -4,6 +4,74 @@
 
 它不是一个泛化的软件产品，而是一套面向论文实验的可复现实验包。核心目标是把淘宝用户行为日志转化为用户级流失预警建模流程，并导出可直接写入论文的表格、图和结果说明。
 
+## 快速认识这个仓库
+
+如果你第一次打开这个仓库，可以先看这一段。
+
+### 项目目标
+
+本项目想解决的问题是：
+
+> 能不能根据用户过去一段时间的电商行为，提前识别出未来可能流失的用户。
+
+这里的“流失”定义为：
+
+> 用户在预测期内不再产生任何行为。
+
+### 数据概况
+
+当前真实实验文件审计结果如下：
+
+- 原始数据文件：`archive/.csv`
+- 时间范围：`2014-11-18 00:00:00` 到 `2014-12-18 23:00:00`
+- 原始记录数：`12,256,906`
+- 原始唯一用户数：`10,000`
+- 观察期建模用户数：`9,904`
+- 流失样本占比：`4.81%`
+
+### 系统流程
+
+整个系统按下面顺序运行：
+
+1. 读取真实 CSV 并做字段审计
+2. 划分观察期和预测期
+3. 按观察期用户全集构造标签
+4. 生成用户级特征
+5. 训练 baseline 模型
+6. 做特征筛选、参数调优和优化建模
+7. 导出论文图表和结果表
+
+### 当前核心结果
+
+在当前实验口径下：
+
+- Baseline 按 `ROC_AUC` 最优模型：`LR`
+- Optimized 按 `ROC_AUC` 最优模型：`XGBoost`，`ROC_AUC=0.8971`
+- Optimized 按 `F1` 最优模型：`RF`，`F1=0.3844`
+- 关键特征主要集中在：
+  - `active_day_ratio`
+  - `active_days`
+  - `last_3d_actions`
+  - `last_7d_actions`
+  - `recency_days`
+
+### 结果在哪里看
+
+最重要的产出都在 `outputs/` 下：
+
+- 基础结果表：`outputs/tables`
+- 基础图：`outputs/figures`
+- 论文图表：`outputs/figures/thesis`
+- 论文结果表：`outputs/tables/thesis`
+
+### 初学者建议阅读顺序
+
+1. [BEGINNER_GUIDE.md](E:\QJY\BEGINNER_GUIDE.md)
+2. [DELIVERY_GUIDE.md](E:\QJY\DELIVERY_GUIDE.md)
+3. [THESIS_INTEGRATION_GUIDE.md](E:\QJY\THESIS_INTEGRATION_GUIDE.md)
+4. [RESULTS_INTERPRETATION.md](E:\QJY\RESULTS_INTERPRETATION.md)
+5. [figure_table_catalog.md](E:\QJY\outputs\tables\thesis\figure_table_catalog.md)
+
 ## 1. 这个项目是什么
 
 项目围绕一个明确问题展开：
