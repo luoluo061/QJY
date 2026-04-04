@@ -1,0 +1,5 @@
+﻿model,best_cv_score_roc_auc,selected_feature_count,best_params
+LR,0.9047978218203321,20,"{""clf__solver"": ""liblinear"", ""clf__C"": 0.07196856730011521}"
+RF,0.9035574933733187,20,"{""n_estimators"": 500, ""min_samples_leaf"": 10, ""max_features"": 0.8, ""max_depth"": 16}"
+XGBoost,0.8989146172092966,20,"{""subsample"": 0.7, ""n_estimators"": 200, ""max_depth"": 4, ""learning_rate"": 0.03, ""colsample_bytree"": 0.8}"
+LightGBM,0.8970520442928356,20,"{""num_leaves"": 63, ""n_estimators"": 200, ""min_child_samples"": 60, ""max_depth"": -1, ""learning_rate"": 0.03}"

@@ -1,0 +1,5 @@
+﻿stage,summary
+data_audit,"完成真实CSV审计，确认共12,256,906条记录。"
+label_building,"观察期用户共9,904人，流失占比为0.0481。"
+baseline_modeling,Baseline最优模型为LR，ROC_AUC=0.8939，F1=0.1734。
+model_optimization,优化后最优模型为XGBoost，ROC_AUC=0.8971，F1=0.3333。

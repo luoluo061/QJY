@@ -1,0 +1,12 @@
+﻿metric,value
+file_name,.csv
+row_count,12256906
+column_count,6
+unique_users,10000
+unique_items,2876947
+unique_categories,8916
+min_time,2014-11-18 00:00:00
+max_time,2014-12-18 23:00:00
+bad_time_sample_count,0
+user_geohash_missing,8334824
+user_geohash_missing_rate,0.6800104365653127

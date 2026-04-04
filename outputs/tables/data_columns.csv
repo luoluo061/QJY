@@ -1,0 +1,7 @@
+﻿column_name,dtype,missing_count,missing_rate,description
+user_id,int64,0,0.0,用户标识
+item_id,int64,0,0.0,商品标识
+behavior_type,int64,0,0.0,行为编码
+user_geohash,object,8334824,0.6800104365653127,地理位置编码
+item_category,int64,0,0.0,商品类目
+time,object,0,0.0,小时级时间戳字符串
