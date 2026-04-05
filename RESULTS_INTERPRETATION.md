@@ -1,320 +1,200 @@
-# 结果图表位置与含义说明
+# 结果解读说明
 
-本文档的目标是让阅读者快速明白：
+这份文档用于回答三个问题：
 
-- 每类图表在论文中应该放在哪一章
-- 它解决的是什么问题
-- 图里看到什么，应该怎样解释
+1. 每类结果文件在说明什么。
+2. 看不同图表时应该关注什么指标。
+3. 如何把结果讲清楚，而不是只报一个分数。
 
-## 1. 第4章：数据审计与实验设计
+## 一、先看哪几类结果
 
-这一章的任务不是证明模型多强，而是证明实验设计合理、数据可用。
+### 1. 数据与实验设计
 
-### `outputs/figures/thesis/data_time_range.png`
+建议先看：
 
-建议标题：
+- `outputs/tables/data_audit_overview.csv`
+- `outputs/tables/time_window_design.csv`
+- `outputs/tables/label_distribution.csv`
 
-- 淘宝用户行为数据时间范围分布图
+这部分回答：
 
-建议放置位置：
+- 数据是否可靠
+- 时间窗是否合理
+- 标签是否存在不平衡
 
-- 第4章“数据来源与时间范围”
+### 2. 模型对比
 
-代表意义：
+建议再看：
 
-- 说明数据覆盖时间是连续的，不是零散采样。
-- 说明样本具备做时间窗口划分的基础。
+- `outputs/tables/baseline_model_comparison.csv`
+- `outputs/tables/optimized_model_comparison.csv`
+- `outputs/tables/optimization_before_after_comparison.csv`
 
-推荐表述：
+这部分回答：
 
-- 原始行为日志覆盖 31 天，时间连续且无明显断层，因此可以按照固定观察期与预测期构建流失预警实验。
+- 不同模型谁更强
+- 优化前后有没有提升
+- 哪个指标上的提升最明显
 
-### `outputs/figures/thesis/time_window_schema.png`
+### 3. 模型解释
 
-建议标题：
+建议最后看：
 
-- 观察期与预测期时间窗口示意图
+- `outputs/tables/feature_importance.csv`
+- `outputs/figures/feature_importance.png`
+- `outputs/figures/thesis/` 下的扩展解释图
 
-建议放置位置：
+这部分回答：
 
-- 第4章“实验窗口设计”
+- 模型主要依赖哪些特征
+- 不同特征与流失风险之间是什么关系
 
-代表意义：
+## 二、几类关键图表怎么理解
 
-- 明确告诉读者哪些数据用于构造特征，哪些数据用于定义标签。
-- 体现“先观察、后预测”的时间因果顺序。
+### `data_time_range.png`
 
-推荐表述：
+看什么：
 
-- 本文采用前 24 天作为观察期、后 7 天作为预测期，先利用观察期行为构建用户画像，再根据预测期是否仍有行为定义流失标签。
+- 数据是否覆盖完整时间段
+- 是否存在明显断层
 
-### `outputs/figures/thesis/label_distribution.png`
+说明什么：
 
-建议标题：
+- 数据具备按时间窗构建流失预测任务的基础
 
-- 流失标签分布图
+### `time_window_schema.png`
 
-建议放置位置：
+看什么：
 
-- 第4章“标签构建结果”
+- 观察期与预测期的切分是否清楚
 
-代表意义：
+说明什么：
 
-- 说明样本不平衡是否严重。
-- 为后续引出 class weight、特征筛选、模型调优提供依据。
+- 特征来自过去，标签来自未来，流程没有时间泄漏
 
-推荐表述：
+### `label_distribution.png`
 
-- 流失样本占比较低，说明该任务属于典型类别不平衡分类问题，后续模型优化需要重点考虑召回率与 F1 的提升。
+看什么：
 
-### `outputs/figures/thesis/behavior_type_distribution.png`
+- 流失类占比是否过低
 
-建议标题：
+说明什么：
 
-- 行为类型分布图
+- 任务是否属于类别不平衡问题
 
-建议放置位置：
+### `baseline_roc_curve.png` / `optimized_roc_curve.png`
 
-- 第4章“原始数据概况”
+看什么：
 
-代表意义：
+- 曲线谁更靠近左上角
+- AUC 是否提升
 
-- 说明原始行为数据并不均匀，存在主行为占多数的特征。
-- 解释为什么需要把行为日志聚合成更稳定的用户级特征。
+说明什么：
 
-### `outputs/figures/thesis/missing_value_overview.png`
+- 模型整体区分能力强不强
 
-建议标题：
+### `optimized_pr_curve.png`
 
-- 字段缺失值概况图
+看什么：
 
-建议放置位置：
+- 在召回率变化时，精确率下降速度如何
 
-- 第4章“数据质量分析”
+说明什么：
 
-代表意义：
+- 在少数类识别场景下，模型是否真的有效
 
-- 说明哪些字段缺失严重。
-- 解释为何 `user_geohash` 不能直接作为核心建模字段。
+### `best_model_confusion_matrix_*`
 
-## 2. 第5章：模型效果对比
+看什么：
 
-这一章要回答的问题是：模型效果如何，优化有没有意义。
+- 漏判多少
+- 误判多少
 
-### `outputs/tables/baseline_model_comparison.csv`
+说明什么：
 
-建议放置位置：
+- 模型在业务上是否可用，代价主要落在哪一侧
 
-- 第5章“Baseline 模型结果”
+### `feature_importance.png`
 
-代表意义：
+看什么：
 
-- 展示四类模型在初始条件下的整体表现。
-- 用于说明最初哪类模型更适合这个任务。
+- 排名前几的特征是谁
+- 这些特征是否集中在某些行为维度
 
-### `outputs/figures/thesis/baseline_roc_curve.png`
+说明什么：
 
-建议放置位置：
+- 模型在决策时最依赖哪些用户行为信号
 
-- 第5章“Baseline 模型结果”
+## 三、看表格时重点关注哪些字段
 
-代表意义：
+### `baseline_model_comparison.csv` / `optimized_model_comparison.csv`
 
-- 展示 baseline 条件下四种模型的区分能力。
+重点看：
 
-### `outputs/tables/optimized_model_comparison.csv`
+- `roc_auc`
+- `f1`
+- `precision`
+- `recall`
 
-建议放置位置：
+解读方式：
 
-- 第5章“模型优化结果”
+- `roc_auc` 更适合看整体区分能力
+- `f1` 更适合看不平衡场景下的综合效果
+- `precision` 和 `recall` 用来判断误报与漏报的平衡
 
-代表意义：
+### `optimization_before_after_comparison.csv`
 
-- 展示加入类别不平衡处理、特征筛选和参数调优后的模型表现。
+重点看：
 
-### `outputs/figures/thesis/optimized_roc_curve.png`
+- `roc_auc_gain`
+- `f1_gain`
 
-建议放置位置：
+解读方式：
 
-- 第5章“模型优化结果”
+- 如果两个增益都为正，说明优化是有效的
+- 如果只提升 `roc_auc` 但 `f1` 没提升，需要看是否牺牲了少数类识别
 
-代表意义：
+### `feature_selection_scores.csv`
 
-- 展示优化后四种模型的 ROC 对比。
-- 适合说明谁的整体区分能力最强。
+重点看：
 
-### `outputs/figures/thesis/optimized_pr_curve.png`
+- 哪些特征的互信息得分更高
 
-建议放置位置：
+解读方式：
 
-- 第5章“模型优化结果”
+- 得分高说明该特征与标签关联更强，通常更值得保留进入优化建模
 
-代表意义：
+## 四、当前项目结果应该怎么讲
 
-- 在类别不平衡背景下，PR 曲线比 ROC 更能说明对流失类的识别质量。
+基于现有输出，可以按下面逻辑概括结果：
 
-推荐表述：
+1. 原始行为日志经过时间窗切分和用户级聚合后，可以形成稳定的建模样本。
+2. 基础模型已经能区分部分流失用户，说明行为数据中存在可学习信号。
+3. 经过特征筛选、类别不平衡处理和参数搜索后，树模型优势更加明显。
+4. 关键特征主要集中在活跃度、近期活跃和行为强度上，说明“是否持续活跃”是预测流失的核心信息来源。
 
-- 由于流失样本占比较低，仅比较 ROC_AUC 不足以全面反映模型对少数类的识别能力，因此本文进一步使用 PR 曲线进行补充分析。
+## 五、汇报时建议避免的表达
 
-### `outputs/tables/optimization_before_after_comparison.csv`
+不建议只说：
 
-建议放置位置：
+- “AUC 提高了”
+- “模型效果不错”
+- “XGBoost 最好”
 
-- 第5章“优化前后对比”
+更好的表达方式是：
 
-代表意义：
+- 模型在整体区分能力上提升了多少
+- 模型对少数类流失用户的识别是否同步提升
+- 哪些特征主导了模型判断
+- 当前结果更适合用在哪类业务目标下
 
-- 直接比较每个模型在优化前后的 AUC 与 F1 变化。
-- 用于说明优化策略是否有效。
+## 六、如果老师重点看代码和结果
 
-## 3. 第5章：最优模型评估
+建议重点展示下面几项：
 
-这一部分不是比较模型，而是深入解释最优模型表现。
+1. `pipeline.py` 中时间窗切分与标签构建逻辑
+2. `user_modeling_dataset.csv` 中的特征结构
+3. `optimized_model_comparison.csv` 中的最终模型结果
+4. `feature_importance.png` 中的关键特征
 
-### `outputs/figures/thesis/best_model_confusion_matrix_count.png`
-
-代表意义：
-
-- 展示绝对分类数量。
-- 适合说明识别出多少流失用户、误判了多少未流失用户。
-
-### `outputs/figures/thesis/best_model_confusion_matrix_normalized.png`
-
-代表意义：
-
-- 展示分类比例结构。
-- 适合解释流失类召回率和未流失类误判情况。
-
-### `outputs/figures/thesis/threshold_precision_recall_f1_curve.png`
-
-代表意义：
-
-- 展示阈值变化时精确率、召回率和 F1 的变化。
-- 适合解释为什么论文采用当前阈值，或为什么业务场景可以调整阈值。
-
-### `outputs/figures/thesis/best_model_calibration_curve.png`
-
-代表意义：
-
-- 展示模型输出概率是否可信。
-- 如果曲线接近对角线，说明预测概率更接近真实概率。
-
-## 4. 第5章：模型解释与关键特征分析
-
-这一部分用来回答“模型为什么这么判断”。
-
-### `outputs/figures/thesis/all_models_permutation_importance.png`
-
-代表意义：
-
-- 比较不同模型对特征重要性的共同关注点。
-- 适合说明哪些特征在多模型下都稳定重要。
-
-### `outputs/figures/thesis/best_model_feature_importance.png`
-
-代表意义：
-
-- 用于展示最优模型内部最重要的特征排序。
-
-推荐表述：
-
-- 最优模型对近期活跃程度、活跃天数和行为新近性相关特征最为敏感，说明用户是否持续保持近期活跃是流失预警中的核心信号。
-
-### `outputs/figures/thesis/boxplot_*.png`
-
-重点关注：
-
-- `boxplot_recency_days.png`
-- `boxplot_last_7d_actions.png`
-- `boxplot_active_days.png`
-
-代表意义：
-
-- 通过流失组与未流失组的分布差异，展示关键特征的群体差别。
-
-推荐表述：
-
-- 与未流失用户相比，流失用户通常具有更长的最近行为间隔、更少的近期行为次数和更低的活跃天数，说明活跃衰减是流失形成的重要前兆。
-
-### `outputs/figures/thesis/pdp_recency_days.png`
-
-代表意义：
-
-- 说明随着 `recency_days` 增大，预测流失概率如何变化。
-
-### `outputs/figures/thesis/pdp_last_7d_actions.png`
-
-代表意义：
-
-- 说明近期行为次数增加是否会显著降低流失概率。
-
-### `outputs/figures/thesis/pdp_active_days.png`
-
-代表意义：
-
-- 说明用户活跃天数提升是否会抑制流失风险。
-
-## 5. 附录或模型优化小节：训练过程图
-
-这类图的价值在于证明参数和训练轮次不是拍脑袋定的。
-
-### LR
-
-- `lr_learning_curve.png`
-- `lr_validation_curve_c.png`
-
-作用：
-
-- 说明逻辑回归的样本规模敏感性与正则化参数影响。
-
-### RF
-
-- `rf_oob_error_vs_estimators.png`
-- `rf_validation_curve_max_depth.png`
-
-作用：
-
-- 说明随机森林树数量和树深的选择依据。
-
-### XGBoost
-
-- `xgboost_train_valid_metrics.png`
-
-作用：
-
-- 观察 boosting rounds 增加时训练集和验证集指标是否分离。
-- 用于判断是否出现过拟合。
-
-### LightGBM
-
-- `lightgbm_metric_vs_iterations.png`
-- `lightgbm_plot_importance.png`
-
-作用：
-
-- 展示 LightGBM 的迭代收敛过程与树模型内部的重要特征。
-
-## 6. 如果正文篇幅有限，优先保留哪些图
-
-建议正文优先保留：
-
-1. `time_window_schema.png`
-2. `label_distribution.png`
-3. `optimized_roc_curve.png`
-4. `optimized_pr_curve.png`
-5. `best_model_confusion_matrix_normalized.png`
-6. `best_model_feature_importance.png`
-7. `boxplot_recency_days.png`
-8. `pdp_recency_days.png`
-
-其余训练过程图可以放附录。
-
-## 7. 一句话总结这些图表的作用
-
-这些图表共同完成四件事：
-
-1. 证明数据和实验设计是合理的。
-2. 证明模型优化确实带来了效果提升。
-3. 解释模型到底依赖哪些用户行为信号做出判断。
-4. 帮助论文读者从“数据输入”一路看到“建模机制”和“结果含义”。
+这样能把“数据怎么进来、模型怎么做、结果怎么出、为什么这么判断”串成一条完整链路。

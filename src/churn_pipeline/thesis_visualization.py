@@ -1,5 +1,16 @@
 from __future__ import annotations
 
+"""扩展实验可视化模块。
+
+这个模块不重新定义数据处理逻辑，而是在已有建模结果基础上补充：
+1. 实验过程展示图
+2. 模型对比图
+3. 最优模型评估图
+4. 解释性分析图
+
+虽然目录仍沿用 thesis 命名，但本质上这里承担的是项目扩展汇报图表生成任务。
+"""
+
 import json
 import os
 from dataclasses import dataclass
@@ -48,6 +59,7 @@ class ThesisPaths:
 
 
 def get_paths() -> ThesisPaths:
+    """定位扩展图表和扩展结果表的输出目录。"""
     root = Path(__file__).resolve().parents[2]
     tables_dir = root / "outputs" / "tables"
     figures_dir = root / "outputs" / "figures"
@@ -59,6 +71,7 @@ def get_paths() -> ThesisPaths:
 
 
 def load_existing_outputs(paths: ThesisPaths) -> dict[str, pd.DataFrame]:
+    """读取主流水线产出的中间表，作为扩展可视化的数据源。"""
     names = [
         "data_audit_overview.csv",
         "data_columns.csv",
@@ -81,6 +94,7 @@ def load_existing_outputs(paths: ThesisPaths) -> dict[str, pd.DataFrame]:
 
 
 def prepare_training_data(outputs: dict[str, pd.DataFrame]):
+    """从已生成的建模宽表中恢复训练集和测试集，用于复现评估图。"""
     data = outputs["user_modeling_dataset.csv"].copy()
     feature_cols = [c for c in data.columns if c not in {"user_id", "label_churn"}]
     X = data[feature_cols]
@@ -98,6 +112,7 @@ def _parse_best_params(outputs: dict[str, pd.DataFrame], model_name: str) -> dic
 
 
 def fit_models(outputs: dict[str, pd.DataFrame], X_train, X_test, y_train, y_test, selected_features):
+    """按保存的最优参数重新拟合模型，保证扩展图与主实验结果一致。"""
     pos = int((y_train == 1).sum())
     neg = int((y_train == 0).sum())
     scale_pos_weight = neg / max(pos, 1)
@@ -148,12 +163,14 @@ def fit_models(outputs: dict[str, pd.DataFrame], X_train, X_test, y_train, y_tes
         ),
     }
 
+    # baseline 图用于展示原始特征下模型的基础区分能力。
     baseline_payload = {}
     for name, model in baseline_models.items():
         model.fit(X_train, y_train)
         prob = model.predict_proba(X_test)[:, 1]
         baseline_payload[name] = {"model": model, "prob": prob, "pred": (prob >= 0.5).astype(int)}
 
+    # optimized 图用于展示筛选特征和调参后的最终能力。
     optimized_payload = {}
     for name, model in optimized_models.items():
         params = _parse_best_params(outputs, name)
@@ -166,6 +183,7 @@ def fit_models(outputs: dict[str, pd.DataFrame], X_train, X_test, y_train, y_tes
 
 
 def save_experiment_process_figures(paths: ThesisPaths, outputs: dict[str, pd.DataFrame]) -> list[dict]:
+    """生成描述数据范围、时间窗和标签结构的过程图。"""
     catalog = []
 
     daily = outputs["daily_activity_distribution.csv"].copy()
@@ -249,6 +267,7 @@ def save_experiment_process_figures(paths: ThesisPaths, outputs: dict[str, pd.Da
 
 
 def save_model_result_figures(paths: ThesisPaths, baseline_payload, optimized_payload, y_test) -> tuple[list[dict], str]:
+    """生成模型对比、最优模型评估和阈值分析图。"""
     catalog = []
 
     fig, ax = plt.subplots(figsize=(7, 6))

@@ -1,5 +1,19 @@
 from __future__ import annotations
 
+"""用户流失预测主实验流水线。
+
+这个模块把原始电商行为日志加工为用户级建模样本，并在统一的数据口径下完成：
+1. 数据审计
+2. 时间窗口划分
+3. 标签构建
+4. 特征工程
+5. baseline 模型训练
+6. 特征筛选与参数优化
+7. 结果与解释性输出
+
+实现上刻意采用分阶段函数拆分，便于说明每一步实验设计的目的和产物。
+"""
+
 import json
 import os
 from collections import Counter, defaultdict
@@ -67,6 +81,7 @@ class WindowConfig:
 
 
 def get_paths() -> Paths:
+    """集中管理输入输出路径，保证所有实验产物落到固定目录。"""
     root = Path(__file__).resolve().parents[2]
     output_dir = root / "outputs"
     tables_dir = output_dir / "tables"
@@ -109,6 +124,7 @@ def _update_set_store(store: defaultdict[int, set], grouped: pd.Series) -> None:
 
 
 def audit_dataset(paths: Paths) -> tuple[pd.DataFrame, pd.Series]:
+    """审计原始日志数据质量，并输出后续实验依赖的基础统计结果。"""
     null_counts = Counter()
     behavior_counts = Counter()
     daily_counts = Counter()
@@ -205,10 +221,12 @@ def audit_dataset(paths: Paths) -> tuple[pd.DataFrame, pd.Series]:
 
 
 def choose_windows(daily_series: pd.Series, paths: Paths) -> WindowConfig:
+    """根据样本时间范围定义观察期和预测期。"""
     all_dates = pd.to_datetime(daily_series.index)
     start_date = all_dates.min()
     end_date = all_dates.max()
     prediction_days = 7
+    # 固定把最后 7 天留作预测期，确保标签来自未来时间段。
     prediction_start = end_date - pd.Timedelta(days=prediction_days - 1)
     observation_end = prediction_start - pd.Timedelta(hours=1)
     observation_start = start_date
@@ -241,6 +259,7 @@ def choose_windows(daily_series: pd.Series, paths: Paths) -> WindowConfig:
 
 
 def build_modeling_dataset(paths: Paths, window: WindowConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """将行为流水聚合为用户级建模宽表，并同步生成流失标签。"""
     total_actions = defaultdict(float)
     weekend_actions = defaultdict(float)
     geohash_missing_actions = defaultdict(float)
@@ -261,6 +280,7 @@ def build_modeling_dataset(paths: Paths, window: WindowConfig) -> tuple[pd.DataF
     for chunk in pd.read_csv(paths.data_file, chunksize=CHUNKSIZE):
         chunk["timestamp"] = pd.to_datetime(chunk["time"], format="%Y-%m-%d %H", errors="coerce")
         chunk = chunk.dropna(subset=["timestamp"]).copy()
+        # 观察期只负责生成特征，预测期只负责确定标签，避免时间泄漏。
         obs_mask = (chunk["timestamp"] >= window.observation_start) & (chunk["timestamp"] <= window.observation_end)
         pred_mask = (chunk["timestamp"] >= window.prediction_start) & (chunk["timestamp"] <= window.prediction_end)
 
@@ -274,6 +294,7 @@ def build_modeling_dataset(paths: Paths, window: WindowConfig) -> tuple[pd.DataF
         obs["is_weekend"] = (obs["timestamp"].dt.weekday >= 5).astype(int)
         obs["geohash_missing"] = obs["user_geohash"].isna().astype(int)
 
+        # 这里按用户持续累计统计量，把行为流水压缩成用户级画像。
         _update_numeric_store(total_actions, obs.groupby("user_id").size())
         _update_numeric_store(weekend_actions, obs.groupby("user_id")["is_weekend"].sum())
         _update_numeric_store(geohash_missing_actions, obs.groupby("user_id")["geohash_missing"].sum())
@@ -323,12 +344,14 @@ def build_modeling_dataset(paths: Paths, window: WindowConfig) -> tuple[pd.DataF
     data["active_day_ratio"] = data["active_days"] / window.observation_days
     data["active_hour_ratio"] = data["active_hours"] / 24.0
 
+    # 行为类型次数和占比用于描述用户行为结构，而不只是行为总量。
     for code in [1, 2, 3, 4]:
         count_col = f"behavior_{code}_count"
         ratio_col = f"behavior_{code}_ratio"
         data[count_col] = data["user_id"].map(behavior_action_counts[code]).fillna(0.0)
         data[ratio_col] = data[count_col] / data["total_actions"].replace(0, np.nan)
 
+    # 观察期出现过、但预测期完全没有行为的用户记为流失。
     data["label_churn"] = (~data["user_id"].isin(prediction_users)).astype(int)
     data = data.drop(columns=["first_timestamp", "last_timestamp"]).fillna(0.0)
     data.to_csv(paths.tables_dir / "user_modeling_dataset.csv", index=False, encoding="utf-8-sig")
@@ -344,6 +367,7 @@ def build_modeling_dataset(paths: Paths, window: WindowConfig) -> tuple[pd.DataF
 
 
 def save_feature_tables(paths: Paths, data: pd.DataFrame) -> pd.DataFrame:
+    """导出特征说明、描述统计和相关性结果，便于解释建模变量。"""
     feature_descriptions = [
         ("total_actions", "观察期内总行为次数"),
         ("weekend_actions", "观察期内周末行为次数"),
@@ -402,6 +426,7 @@ def save_feature_tables(paths: Paths, data: pd.DataFrame) -> pd.DataFrame:
 
 
 def _evaluate_predictions(model_name: str, stage: str, y_true: pd.Series, y_pred: np.ndarray, y_prob: np.ndarray) -> dict:
+    """统一封装分类指标，避免不同阶段结果口径不一致。"""
     return {
         "stage": stage,
         "model": model_name,
@@ -448,6 +473,7 @@ def _plot_confusion_matrix(y_true: pd.Series, y_pred: np.ndarray, figure_path: P
 
 
 def train_baseline_models(paths: Paths, data: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+    """训练 baseline 模型，建立统一的比较基线。"""
     feature_cols = [col for col in data.columns if col not in {"user_id", "label_churn"}]
     X = data[feature_cols]
     y = data["label_churn"]
@@ -489,6 +515,7 @@ def train_baseline_models(paths: Paths, data: pd.DataFrame) -> tuple[pd.DataFram
         ),
     }
 
+    # baseline 阶段尽量保持模型配置简洁，用来观察原始特征本身的可分性。
     results = []
     prediction_store = {}
     for model_name, model in models.items():
@@ -527,11 +554,13 @@ def train_baseline_models(paths: Paths, data: pd.DataFrame) -> tuple[pd.DataFram
 
 
 def optimize_models(paths: Paths, split_info: dict, baseline_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, object, list[str]]:
+    """在统一数据划分上完成特征筛选、类别不平衡处理和参数搜索。"""
     X_train = split_info["X_train"]
     X_test = split_info["X_test"]
     y_train = split_info["y_train"]
     y_test = split_info["y_test"]
 
+    # 先用互信息做一次过滤，减少噪声特征进入后续搜索空间。
     feature_scores = mutual_info_classif(X_train, y_train, random_state=RANDOM_STATE)
     selected_scores = (
         pd.DataFrame({"feature_name": X_train.columns, "mutual_info_score": feature_scores})
@@ -542,10 +571,12 @@ def optimize_models(paths: Paths, split_info: dict, baseline_df: pd.DataFrame) -
     selected_features = selected_scores.head(top_k)["feature_name"].tolist()
     selected_scores.to_csv(paths.tables_dir / "feature_selection_scores.csv", index=False, encoding="utf-8-sig")
 
+    # 只用筛选后的特征进入优化阶段，控制搜索复杂度并减少噪声干扰。
     X_train_sel = X_train[selected_features]
     X_test_sel = X_test[selected_features]
     pos = int((y_train == 1).sum())
     neg = int((y_train == 0).sum())
+    # 正负样本比例用于提升树模型的类别不平衡修正。
     scale_pos_weight = neg / max(pos, 1)
 
     search_space = {
@@ -613,6 +644,7 @@ def optimize_models(paths: Paths, split_info: dict, baseline_df: pd.DataFrame) -
     best_params_rows = []
 
     for model_name, (estimator, params) in search_space.items():
+        # 统一以 ROC_AUC 做搜索目标，保证不同模型在同一标准下比较。
         search = RandomizedSearchCV(
             estimator=estimator,
             param_distributions=params,
@@ -671,12 +703,14 @@ def optimize_models(paths: Paths, split_info: dict, baseline_df: pd.DataFrame) -
 
 
 def save_feature_importance(paths: Paths, best_model: object, selected_features: list[str], split_info: dict) -> None:
+    """输出最优模型的特征重要性结果，用于解释模型判断依据。"""
     X_test = split_info["X_test"][selected_features]
     y_test = split_info["y_test"]
 
     if hasattr(best_model, "feature_importances_"):
         importance_values = np.asarray(best_model.feature_importances_)
     else:
+        # 对没有原生特征重要性的模型退化为 permutation importance。
         result = permutation_importance(best_model, X_test, y_test, n_repeats=10, random_state=RANDOM_STATE, n_jobs=1)
         importance_values = result.importances_mean
 
@@ -698,6 +732,7 @@ def save_feature_importance(paths: Paths, best_model: object, selected_features:
 
 
 def save_stage_summary(paths: Paths, audit_df: pd.DataFrame, label_df: pd.DataFrame, baseline_df: pd.DataFrame, optimized_df: pd.DataFrame) -> None:
+    """把关键阶段结果压缩成一页摘要，方便快速汇报项目进展。"""
     baseline_best = baseline_df.iloc[0]
     optimized_best = optimized_df.iloc[0]
     summary = pd.DataFrame(
@@ -713,6 +748,7 @@ def save_stage_summary(paths: Paths, audit_df: pd.DataFrame, label_df: pd.DataFr
 
 def main() -> None:
     paths = get_paths()
+    # 主流程顺序严格对应建模链路：先审计，再构造样本，再训练与解释。
     audit_df, daily_series = audit_dataset(paths)
     window = choose_windows(daily_series, paths)
     modeling_df, label_df = build_modeling_dataset(paths, window)
